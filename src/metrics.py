@@ -4,7 +4,8 @@
 대회 평가 방식이 확정되면 이 파일의 competition_metric 함수만 수정하면
 전체 파이프라인에 자동으로 반영됩니다.
 
-현재 기본 지표: RMSE
+현재 대회 공식 지표: Average Log-Loss (7개 이진 지표 평균, 낮을수록 좋음)
+참고용으로 회귀 지표(RMSE/MAE)와 분류 지표(F1/AUC/Accuracy)도 함께 제공합니다.
 """
 
 import numpy as np
@@ -15,15 +16,47 @@ from sklearn.metrics import (
     mean_squared_error,
     mean_absolute_error,
     r2_score,
+    log_loss as sk_log_loss,
+    f1_score,
+    roc_auc_score,
+    accuracy_score,
 )
 
-# TODO (분류 확장): 분류 metric이 필요하면 아래를 추가하세요
-# from sklearn.metrics import (
-#     accuracy_score, f1_score, roc_auc_score
-# )
+
+# ── 분류 지표 (대회 공식) ─────────────────────────────────────────────────────
+
+def log_loss(y_true: np.ndarray, y_prob: np.ndarray, eps: float = 1e-15) -> float:
+    """
+    Binary Log-Loss (낮을수록 좋음). 대회 공식 평가 지표.
+
+    y_prob는 클래스 1의 확률(0~1). 확신 오답에 무한 벌점이 가지 않도록
+    [eps, 1-eps]로 클리핑합니다. y_true에 한 클래스만 있어도 동작하도록
+    labels=[0, 1]을 명시합니다.
+    """
+    y_prob = np.clip(np.asarray(y_prob, dtype=float), eps, 1 - eps)
+    return float(sk_log_loss(y_true, y_prob, labels=[0, 1]))
 
 
-# ── 회귀 지표 ─────────────────────────────────────────────────────────────────
+def macro_f1(y_true: np.ndarray, y_prob: np.ndarray, threshold: float = 0.5) -> float:
+    """확률을 threshold로 이진화한 뒤 macro F1 (참고용, 높을수록 좋음)."""
+    y_pred = (np.asarray(y_prob) >= threshold).astype(int)
+    return float(f1_score(y_true, y_pred, average="macro", zero_division=0))
+
+
+def auc(y_true: np.ndarray, y_prob: np.ndarray) -> float:
+    """ROC-AUC (참고용, 높을수록 좋음). 한 클래스만 있으면 NaN 반환."""
+    if len(np.unique(y_true)) < 2:
+        return float("nan")
+    return float(roc_auc_score(y_true, y_prob))
+
+
+def accuracy(y_true: np.ndarray, y_prob: np.ndarray, threshold: float = 0.5) -> float:
+    """Accuracy (참고용, 높을수록 좋음)."""
+    y_pred = (np.asarray(y_prob) >= threshold).astype(int)
+    return float(accuracy_score(y_true, y_pred))
+
+
+# ── 회귀 지표 (참고용) ────────────────────────────────────────────────────────
 
 def rmse(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     """Root Mean Squared Error"""
@@ -45,30 +78,17 @@ def pearson_correlation(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     return float(np.corrcoef(y_true, y_pred)[0, 1])
 
 
-# TODO (분류 확장): 분류 지표 함수를 추가하세요
-# def accuracy(y_true, y_pred):
-#     return float(accuracy_score(y_true, y_pred))
-#
-# def macro_f1(y_true, y_pred):
-#     return float(f1_score(y_true, y_pred, average="macro"))
-
-
 # ── 대회 공식 지표 ───────────────────────────────────────────────────────────
 # 이 함수만 수정하면 전체 파이프라인에 반영됩니다.
+# 대회 평가: 7개 이진 지표 각각의 Log-Loss를 평균 (낮을수록 좋음).
+# y_pred는 클래스 1의 확률이어야 합니다.
+
+GREATER_IS_BETTER = False   # Log-Loss는 낮을수록 좋음
+
 
 def competition_metric(y_true: np.ndarray, y_pred: np.ndarray) -> float:
-    """
-    대회 공식 평가 지표.
-
-    현재: RMSE (낮을수록 좋음)
-    대회 평가 방식 확정 후 이 함수를 수정하세요.
-
-    대회 평가 기준에 따라 교체 예시:
-      - MAE 기반: return mae(y_true, y_pred)
-      - Pearson: return -pearson_correlation(y_true, y_pred)  # 높을수록 좋도록 -부호
-      - 복합: return 0.5 * rmse(...) + 0.5 * mae(...)
-    """
-    return rmse(y_true, y_pred)
+    """대회 공식 평가 지표: Binary Log-Loss (낮을수록 좋음)."""
+    return log_loss(y_true, y_pred)
 
 
 # ── 멀티 타겟 평균 점수 ──────────────────────────────────────────────────────
@@ -129,11 +149,13 @@ def print_scores(scores: Dict[str, float], metric_name: str = "Score") -> None:
 
 # ── 독립 실행 테스트 ──────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    y_true = np.array([3.0, 2.5, 4.0, 5.0, 1.5])
-    y_pred = np.array([2.8, 2.6, 4.2, 4.7, 1.9])
+    rng = np.random.default_rng(42)
+    y_true = rng.integers(0, 2, size=200)
+    # 무정보(0.5) vs 정답에 가까운 예측 비교
+    p_half = np.full(200, 0.5)
+    p_good = np.clip(y_true * 0.7 + 0.15 + rng.normal(0, 0.1, 200), 0, 1)
 
-    print(f"RMSE : {rmse(y_true, y_pred):.6f}")
-    print(f"MAE  : {mae(y_true, y_pred):.6f}")
-    print(f"R²   : {r2(y_true, y_pred):.6f}")
-    print(f"Corr : {pearson_correlation(y_true, y_pred):.6f}")
-    print(f"Comp : {competition_metric(y_true, y_pred):.6f}")
+    print(f"[0.5 상수]   LogLoss : {competition_metric(y_true, p_half):.6f}  (= ln2 ≈ 0.6931)")
+    print(f"[좋은 예측]  LogLoss : {competition_metric(y_true, p_good):.6f}")
+    print(f"[좋은 예측]  AUC     : {auc(y_true, p_good):.6f}")
+    print(f"[좋은 예측]  macroF1 : {macro_f1(y_true, p_good):.6f}")

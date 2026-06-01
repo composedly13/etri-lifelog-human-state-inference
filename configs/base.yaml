@@ -26,14 +26,12 @@ paths:
 
 # ── 데이터 설정 ────────────────────────────────────────────────────────────────
 data:
-  # ID 컬럼명
-  # null 이면 sample_submission의 첫 번째 컬럼을 id_col로 자동 추론
-  id_col: null
+  # 키 컬럼 (라벨/제출 CSV 공통)
+  id_col: "subject_id"
+  key_cols: ["subject_id", "sleep_date", "lifelog_date"]
 
-  # 예측 대상 컬럼 리스트
-  # null 이면 sample_submission에서 id_col 제외 컬럼으로 자동 추론
-  # 예시: ["sleep_quality", "fatigue", "stress"]
-  target_cols: null
+  # 예측 대상 7개 이진 지표
+  target_cols: ["Q1", "Q2", "Q3", "S1", "S2", "S3", "S4"]
 
   # CSV 인코딩 (기본 utf-8, 실패 시 cp949 자동 시도)
   encoding: "utf-8"
@@ -68,6 +66,8 @@ model:
   seed: 42
 
   lgbm_params:
+    objective:         "binary"      # 7개 이진 지표 각각 분류
+    metric:            "binary_logloss"
     n_estimators:      1000
     learning_rate:     0.05
     num_leaves:        31
@@ -98,18 +98,17 @@ model:
 # ── 학습 설정 ──────────────────────────────────────────────────────────────────
 training:
   n_folds:   5
-  seed:      42   # KFold shuffle seed (model.seed와 동일하게 유지)
+  seed:      42   # StratifiedKFold shuffle seed (model.seed와 동일하게 유지)
 
-  # GroupKFold: user_id/subject_id 단위로 fold 분할 (데이터 누수 방지)
-  # use_group_kfold: true로 설정하고 group_col을 지정하면 GroupKFold 사용
+  # train/test가 동일 10명(다른 날짜)이므로 GroupKFold(subject) 대신
+  # StratifiedKFold(랜덤)가 테스트 조건에 부합 → subject_id는 피처로 포함.
   use_group_kfold: false
-  group_col:       null   # e.g. "user_id" 또는 "subject_id"
+  group_col:       null
 
   early_stopping_rounds: 100
 
-  # 평가 지표: 대회 공식 metric에 맞게 수정
-  # 선택지: "rmse" | "mae" | "custom" (src/metrics.py 참조)
-  eval_metric: "rmse"
+  # 대회 공식 평가: Average Log-Loss (src/metrics.py competition_metric)
+  eval_metric: "logloss"
 
 # ── 실험 메타데이터 ────────────────────────────────────────────────────────────
 experiment:
