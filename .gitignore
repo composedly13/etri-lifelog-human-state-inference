@@ -1,0 +1,93 @@
+# ──────────────────────────────────────────
+# ETRI 휴먼이해 AI 논문경진대회 .gitignore
+# ──────────────────────────────────────────
+
+# ── 데이터 (대회 데이터는 배포 금지) ──
+# data/ 전체를 무시하되, .gitkeep placeholder만 예외
+# 주의: 부모 dir이 무시되면 하위 예외가 안 먹히므로 /** 방식 사용
+data/**
+!data/.gitkeep
+!data/raw/
+!data/raw/.gitkeep
+
+# ── 출력물 (모델, 제출 파일) ──
+outputs/**
+!outputs/.gitkeep
+
+# ── Python ──
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+.installed.cfg
+lib/
+lib64/
+MANIFEST
+
+# ── 가상환경 ──
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.conda/
+
+# ── Jupyter ──
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+profile_default/
+ipython_config.py
+
+# ── IDE / 에디터 ──
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ── 로그 / 임시 ──
+*.log
+*.tmp
+*.bak
+*.orig
+
+# ── MLflow / 실험 추적 ──
+mlruns/
+mlartifacts/
+
+# ── 모델 바이너리 ──
+*.pkl
+*.joblib
+*.h5
+*.pt
+*.pth
+*.bin
+*.onnx
+
+# ── 민감 정보 ──
+.env.local
+secrets.yaml
+*.key
+
+# ── Windows ──
+desktop.ini
+$RECYCLE.BIN/
+
+# ── Claude Code 로컬 설정 (공유 안 함) ──
+.claude/

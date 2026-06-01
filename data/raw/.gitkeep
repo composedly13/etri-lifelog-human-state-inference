@@ -1,0 +1,10 @@
+# 이 디렉토리에 대회 원본 데이터를 배치하세요.
+# 이 파일은 빈 디렉토리를 Git에 유지하기 위한 placeholder입니다.
+#
+# 필요한 파일:
+#   data/raw/train.csv
+#   data/raw/test.csv
+#   data/raw/sample_submission.csv
+#
+# 경고: 원본 데이터는 절대 GitHub에 업로드하지 마세요!
+# (data/ 디렉토리는 .gitignore로 제외됩니다)
